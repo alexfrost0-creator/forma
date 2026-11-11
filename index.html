@@ -487,7 +487,7 @@ function vFood(){
     <button class="link" data-act="foodedit">Изменить возраст и пол</button></section>`;
 }
 /* ───────── дневник еды и подсчёт по фото ───────── */
-const KEYK="forma-anthropic-key";
+const KEYK="forma-openai-key",OPENAI_MODEL="gpt-6.1-sol";
 let SAMPLE=null,A=null;
 const apiKey=()=>{try{return localStorage.getItem(KEYK)||""}catch(e){return""}};
 const aiMode=()=>SAMPLE?"claude":apiKey()?"key":"none";
@@ -518,23 +518,26 @@ async function prepImage(file){
 async function askClaude(blob){
   if(SAMPLE)return await SAMPLE.json(FOOD_PROMPT,{images:[blob],cache:false});
   const data=await new Promise((ok,no)=>{const r=new FileReader();r.onload=()=>ok(String(r.result).split(",")[1]);r.onerror=()=>no({code:"image_rejected"});r.readAsDataURL(blob)});
+  // сайт без сервера: запрос идёт из браузера в OpenAI по ключу пользователя (Responses API, строгая JSON-схема)
   let res;
-  try{res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",
-    headers:{"content-type":"application/json","x-api-key":apiKey(),"anthropic-version":"2026-10-21","anthropic-beta":"server-side-fallback-2026-07-01","anthropic-dangerous-direct-browser-access":"true"},
-    body:JSON.stringify({model:"claude-opus-5-5",max_tokens:16000,fallbacks:"default",output_config:{effort:"low",format:{type:"json_schema",schema:FOOD_SCHEMA}},
-      messages:[{role:"user",content:[{type:"image",source:{type:"base64",media_type:"image/jpeg",data}},{type:"text",text:FOOD_PROMPT}]}]})})}
+  try{res=await fetch("https://api.openai.com/v1/responses",{method:"POST",
+    headers:{"content-type":"application/json","authorization":"Bearer "+apiKey()},
+    body:JSON.stringify({model:OPENAI_MODEL,max_output_tokens:8000,
+      input:[{role:"user",content:[{type:"input_text",text:FOOD_PROMPT},{type:"input_image",image_url:"data:image/jpeg;base64,"+data,detail:"auto"}]}],
+      text:{format:{type:"json_schema",name:"meal_estimate",schema:FOOD_SCHEMA,strict:true}}})})}
   catch(e){throw{code:"network"}}
   const j=await res.json().catch(()=>null);
-  if(!res.ok)throw{code:res.status===401||res.status===403?"bad_key":res.status===429?"rate_limited":res.status>=500?"upstream_error":"http",message:(j&&j.error&&j.error.message)||("HTTP "+res.status)};
-  if(!j||j.stop_reason==="refusal")throw{code:"refused"};
-  if(j.stop_reason==="max_tokens")throw{code:"invalid_json"};
-  const t=(j.content||[]).find(b=>b.type==="text");if(!t)throw{code:"invalid_json"};
+  if(!res.ok)throw{code:res.status===401||res.status===403?"bad_key":res.status===429?"quota":res.status>=500?"upstream_error":"http",message:(j&&j.error&&j.error.message)||("HTTP "+res.status)};
+  if(!j||j.status==="incomplete")throw{code:"invalid_json"};
+  const parts=(j.output||[]).filter(o=>o.type==="message").flatMap(o=>o.content||[]);
+  if(parts.some(p=>p.type==="refusal"))throw{code:"refused"};
+  const t=parts.find(p=>p.type==="output_text");if(!t)throw{code:"invalid_json"};
   try{return JSON.parse(t.text)}catch(e){throw{code:"invalid_json"}}
 }
 const AI_ERR={not_granted:"Ты не разрешил странице обращаться к Claude. Без этого по фото посчитать не выйдет, но можно вписать вручную.",sampling_disabled:"Claude для этой страницы недоступен. Впиши еду вручную.",
   rate_limited:"Слишком много запросов или кончился лимит. Попробуй позже.",session_expired:"Нужно заново войти в Claude.",image_rejected:"Не получилось прочитать этот снимок. Попробуй другой.",
-  refused:"Claude отказался разбирать этот снимок. Попробуй другой кадр.",invalid_json:"Ответ пришёл в непонятном виде. Попробуй ещё раз.",bad_key:"Ключ API не подошёл. Проверь его внизу вкладки «Еда».",
-  network:"Нет связи с Anthropic. Проверь интернет и попробуй ещё раз.",upstream_error:"Сервис сейчас не отвечает. Попробуй ещё раз чуть позже."};
+  refused:"Модель отказалась разбирать этот снимок. Попробуй другой кадр.",invalid_json:"Ответ пришёл в непонятном виде. Попробуй ещё раз.",bad_key:"Ключ OpenAI не подошёл. Удали его в разделе «Дневник» и вставь заново.",
+  network:"Нет связи с сервисом распознавания. Проверь интернет и попробуй ещё раз.",upstream_error:"Сервис сейчас не отвечает. Попробуй ещё раз чуть позже."};
 async function analyze(file){
   A={stage:"busy",mult:1};showOv(vMeal());
   try{
@@ -570,14 +573,14 @@ function vDiary(n,d){
   const e=eaten(d),m=d.meals||[],left=n.kcal-e.k,mode=aiMode();
   return `<section class="sec pad"><div class="row between"><h2>Дневник</h2><span class="mark mono">${sp(e.k)} / ${sp(n.kcal)}</span></div>
    <div class="meter"><i style="width:${Math.min(100,e.k/n.kcal*100)}%"></i></div>
-   <p class="small mute">${m.length?(left>=0?`Осталось ${sp(left)} ккал.`:`Перебор на ${sp(-left)} ккал. Не страшно: завтра просто вернись к ориентиру.`)+` Белка ${Math.round(e.p)} из ${n.protein} г.`:"Сфотографируй тарелку, и Claude прикинет калории, белки, жиры и углеводы."}</p>
-   ${mode==="none"?`<div class="brief"><p><b>Для подсчёта по фото нужен ключ Anthropic API.</b></p>
-     <p class="small mute">У сайта нет своего сервера, поэтому фото распознаётся по твоему ключу. Он хранится только в этом браузере и уходит только в Anthropic. Одно фото стоит несколько центов. В версии внутри Claude ключ не нужен.</p>
-     <form id="kform" class="row" style="align-items:flex-end"><label class="grow"><span class="cap mute">Ключ (sk-ant-…)</span><input type="password" id="k-in" autocomplete="off"></label><button class="btn auto">Сохранить</button></form></div>`
+   <p class="small mute">${m.length?(left>=0?`Осталось ${sp(left)} ккал.`:`Перебор на ${sp(-left)} ккал. Не страшно: завтра просто вернись к ориентиру.`)+` Белка ${Math.round(e.p)} из ${n.protein} г.`:"Сфотографируй тарелку, и нейросеть прикинет калории, белки, жиры и углеводы."}</p>
+   ${mode==="none"?`<div class="brief"><p><b>Для подсчёта по фото нужен ключ OpenAI API.</b></p>
+     <p class="small mute">У сайта нет своего сервера, поэтому фото распознаётся по твоему ключу. Он хранится только в этом браузере и уходит только в OpenAI. Одно фото стоит около цента. Ключ создаётся на platform.openai.com в разделе API keys, баланс там пополняется отдельно от подписки ChatGPT.</p>
+     <form id="kform" class="row" style="align-items:flex-end"><label class="grow"><span class="cap mute">Ключ (sk-…)</span><input type="password" id="k-in" autocomplete="off"></label><button class="btn auto">Сохранить</button></form></div>`
     :`<div class="modes" style="grid-template-columns:1fr 1fr"><label class="btn day">Снять еду<input type="file" accept="image/*" capture="environment" class="pick" id="pick-cam" hidden></label><label class="btn line">Из галереи<input type="file" accept="image/*" class="pick" id="pick-lib" hidden></label></div>`}
    <button class="link" data-act="manual-meal">Вписать вручную</button>
    ${m.length?`<div>${m.map((x,i)=>`<div class="pt" style="cursor:default"><span class="grow"><b>${esc(x.n)}</b><br><span class="small mute">${x.f||x.c?`Б ${Math.round(x.p||0)} · Ж ${Math.round(x.f||0)} · У ${Math.round(x.c||0)}`:x.p?`Б ${Math.round(x.p)}`:"вручную"}</span></span><span class="d">${sp(x.k)}</span><button class="link" style="font-size:20px;text-decoration:none;padding:4px 0 4px 8px" data-act="mealdel" data-i="${i}" aria-label="Удалить ${esc(x.n)}">×</button></div>`).join("")}</div>`:""}
-   <p class="small mute">Снимок отправляется в Anthropic только для распознавания и в приложении не хранится.${mode==="key"?` <button class="link" style="padding:0" data-act="keydel">Удалить ключ API из этого браузера</button>`:""}</p></section>`;
+   <p class="small mute">Снимок отправляется в ${mode==="claude"?"Anthropic":"OpenAI"} только для распознавания и в приложении не хранится.${mode==="key"?` <button class="link" style="padding:0" data-act="keydel">Удалить ключ OpenAI из этого браузера</button>`:""}</p></section>`;
 }
 function foodTouched(){
   const d=today(),fd=foodOf(d);
