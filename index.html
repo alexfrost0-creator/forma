@@ -1,4 +1,4 @@
-<!doctype html><html lang="ru"><head><title>Форма</title><link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon.svg"><link rel="apple-touch-icon" href="icon.svg"><meta name="theme-color" content="#0d0f0e"><meta name="apple-mobile-web-app-capable" content="yes"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}body{margin:0}[hidden]{display:none!important}</style></head><body>
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon.svg"><link rel="apple-touch-icon" href="icon.svg"><meta name="theme-color" content="#0d0f0e"><meta name="apple-mobile-web-app-capable" content="yes"><style>:root{padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}body{margin:0}[hidden]{display:none!important}</style></head><body>
 <title>Форма</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;800&family=Onest:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
@@ -101,8 +101,8 @@ label{display:flex;flex-direction:column;gap:2px}
 .entry i{width:10px;flex:none;align-self:stretch}
 
 nav{position:fixed;left:0;right:0;bottom:0;background:var(--paper);border-top:2px solid var(--ink);z-index:5;padding-bottom:env(safe-area-inset-bottom,0px);padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
-nav div{max-width:480px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr)}
-nav button{padding:17px 2px 16px;font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;font-weight:500;color:var(--mute)}
+nav div{max-width:480px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr)}
+nav button{padding:17px 0 16px;font-family:var(--mono);font-size:10.5px;letter-spacing:.04em;text-transform:uppercase;font-weight:500;color:var(--mute)}
 nav button[aria-current=page]{background:var(--ink);color:var(--paper)}
 
 #ov{position:fixed;inset:0;background:var(--paper);z-index:20;overflow-y:auto;
@@ -121,11 +121,29 @@ nav button[aria-current=page]{background:var(--ink);color:var(--paper)}
 .loot span{font-family:var(--mono);font-size:12px;font-weight:700;padding:6px 9px;box-shadow:inset 0 0 0 1.5px currentColor}
 #toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--paper);
   padding:11px 16px;font-size:14px;font-weight:600;z-index:40;max-width:calc(100% - 32px);text-align:center}
+/* позы и еда */
+.poses{display:grid;gap:8px}
+.poses.two{grid-template-columns:1fr 1fr}
+.poses.one{grid-template-columns:minmax(0,62%);justify-content:start}
+.poses>div{display:flex;flex-direction:column;gap:5px}
+.figure{width:100%;display:block;background:var(--tint)}
+.figure .bd{fill:none;stroke:var(--ink);stroke-width:6;stroke-linecap:round;stroke-linejoin:round}
+.figure .pr{fill:none;stroke:var(--mute);stroke-width:3;stroke-linecap:square}
+.figure .fl{stroke:var(--day);stroke-width:5}
+.figure .hd{fill:var(--ink)}
+.figure .hint{fill:none;stroke:var(--day);stroke-width:3;stroke-dasharray:5 5}
+.cues{margin:0;padding:0;list-style:none}
+.cues li{padding:8px 0 8px 20px;border-top:1px solid var(--rule);position:relative}
+.cues li::before{content:"";position:absolute;left:0;top:15px;width:8px;height:8px;background:var(--ink)}
+.glasses{display:flex;gap:6px;margin-top:8px}
+.glasses button{flex:1;aspect-ratio:1/1.5;max-width:40px;box-shadow:inset 0 0 0 2px var(--ink)}
+.glasses button[aria-pressed=true]{background:var(--day);box-shadow:inset 0 0 0 2px var(--ink)}
+.key{width:16px;height:16px;flex:none;align-self:flex-start;margin-top:4px}
 </style>
 
 <div id="app"></div>
 <nav id="nav" hidden><div>
-  <button data-tab="today">Сегодня</button><button data-tab="walk">Вылазка</button><button data-tab="body">Форма</button><button data-tab="fan">Веер</button>
+  <button data-tab="today">Сегодня</button><button data-tab="walk">Вылазка</button><button data-tab="food">Еда</button><button data-tab="body">Форма</button><button data-tab="fan">Веер</button>
 </div></nav>
 <div id="ov" hidden></div>
 <div id="toast" hidden role="status"></div>
@@ -176,30 +194,66 @@ const SAY={
  wup:["Вес скачет от воды, соли и сна. Смотри на линию за месяц, а не на одну точку.","Одна цифра ничего не значит. Ты ходишь и тренируешься, остальное догонит."]
 };
 const TITLES=[[20,"Эталон"],[18,"Тираж"],[15,"Оригинал"],[12,"Чистовик"],[9,"Прототип"],[6,"Макет"],[4,"Черновик"],[2,"Набросок"],[1,"Эскиз"]];
-const P=(n,how,kind,base,inc,sets=1)=>({n,how,kind,base,inc,sets});
+/* позы: h — голова, b — тело (ломаные или path), p — опора, c — подсказка-круг. Поле 120×100, пол на y=94 */
+const CHAIR_L=[[[28,40],[28,90]],[[28,64],[46,64]],[[46,64],[46,90]]],CHAIR_R=[[[86,44],[86,90]],[[86,64],[104,64]],[[104,64],[104,90]]],WALL=[[[102,4],[102,92]]];
+const FIGS={
+ march:[{h:[60,18],b:[[[60,26],[60,58]],[[60,58],[60,74],[60,90],[67,90]],[[60,58],[75,58],[75,75]],[[60,30],[50,42],[55,52]],[[60,30],[70,42],[78,34]]]}],
+ squat:[{h:[60,18],b:[[[60,26],[60,58]],[[60,58],[61,74],[62,90],[69,90]],[[60,30],[79,32]]],p:CHAIR_L},
+  {h:[54,34],b:[[[52,42],[44,62]],[[44,62],[64,64],[64,90],[71,90]],[[52,46],[71,48]]],p:CHAIR_L}],
+ wallpush:[{h:[68,18],b:[[[66,27],[58,58]],[[58,58],[50,90],[57,90]],[[66,30],[100,30]]],p:WALL},
+  {h:[84,20],b:[[[80,29],[66,58]],[[66,58],[50,90],[57,90]],[[80,32],[86,45],[100,34]]],p:WALL}],
+ bridge:[{h:[18,82],b:[[[27,85],[62,85]],[[62,85],[80,64],[90,90]],[[30,87],[56,88]]]},
+  {h:[18,82],b:[[[27,85],[62,64]],[[62,64],[84,61],[88,90]],[[30,87],[54,88]]]}],
+ calf:[{h:[72,18],b:[[[72,26],[72,58]],[[72,58],[72,90],[80,90]],[[72,30],[100,36]]],p:WALL},
+  {h:[72,11],b:[[[72,19],[72,51]],[[72,51],[72,83],[80,90]],[[72,23],[100,33]]],p:WALL}],
+ stretch:[{h:[73,55],b:[[[40,84],[67,62]],[[40,84],[92,84],[92,73]],[[65,65],[89,75]]]}],
+ plank:[{h:[94,56],b:[[[38,87],[85,63]],[[38,87],[22,76]],[[85,65],[85,88],[100,88]]]}],
+ birddog:[{h:[97,58],b:[[[86,62],[46,62]],[[86,62],[86,88]],[[46,62],[46,88],[26,88]]]},
+  {h:[97,56],b:[[[86,62],[46,62]],[[86,62],[86,88]],[[46,62],[46,88],[26,88]],[[86,62],[112,54]],[[46,62],[14,60]]]}],
+ deadbug:[{h:[18,82],b:[[[27,85],[60,85]],[[31,84],[31,56]],[[60,85],[60,62],[81,62]]]},
+  {h:[18,82],b:[[[27,85],[60,85]],[[31,84],[31,56]],[[29,83],[8,64]],[[60,85],[60,62],[81,62]],[[60,85],[102,76]]]}],
+ superman:[{h:[93,82],b:[[[46,86],[84,86]],[[46,86],[8,86]],[[84,86],[112,86]]]},
+  {h:[91,70],b:[[[46,86],[81,78]],[[46,86],[10,77]],[[81,78],[110,66]]]}],
+ catcow:[{h:[96,72],b:["M86 62Q66 42 46 62",[[86,62],[86,88]],[[46,62],[46,88],[26,88]]]},
+  {h:[98,53],b:["M86 62Q66 71 46 62",[[86,62],[86,88]],[[46,62],[46,88],[26,88]]]}],
+ shoulders:[{h:[60,18],b:[[[60,26],[60,58]],[[60,58],[60,90],[67,90]],[[60,30],[58,44],[60,56]]],c:[60,34,13]}],
+ sidebend:[{h:[75,20],b:["M60 58Q60 40 69 29",[[60,58],[51,90]],[[60,58],[69,90]],[[69,31],[80,14],[93,20]],[[66,33],[57,50]]]}],
+ lunge:[{h:[56,18],b:[[[56,26],[56,58]],[[56,58],[56,90],[63,90]],[[56,30],[86,44]]],p:CHAIR_R},
+  {h:[56,30],b:[[[56,38],[56,68]],[[56,68],[72,70],[72,90],[79,90]],[[56,68],[44,86],[26,88]],[[56,42],[86,46]]],p:CHAIR_R}],
+ sidestep:[{h:[60,18],b:[[[60,26],[60,58]],[[60,58],[56,90]],[[60,58],[64,90]],[[60,30],[52,52]],[[60,30],[68,52]]]},
+  {h:[60,18],b:[[[60,26],[60,58]],[[60,58],[43,90]],[[60,58],[77,90]],[[60,30],[43,12]],[[60,30],[77,12]]]}],
+ balance:[{h:[60,18],b:[[[60,26],[60,58]],[[60,58],[60,90],[67,90]],[[60,58],[72,70],[61,79]],[[60,30],[45,44]],[[60,30],[75,44]]]}],
+ breath:[{h:[60,22],b:[[[60,30],[60,60]],[[60,60],[60,90],[67,90]],[[60,34],[55,8]],[[60,34],[66,8]]]}]
+};
+const EX={
+ march:["Марш на месте","Шагай на месте, поднимая колени до уровня пояса.",["Спина прямая, взгляд вперёд","Руки работают, как при ходьбе","Стопу ставь мягко, с носка"],"Не заваливайся назад, когда поднимаешь колено."],
+ squat:["Приседания к стулу","Встань перед стулом, ноги чуть шире плеч. Отведи таз назад, коснись стула и встань.",["Колени смотрят туда же, куда носки","Пятки не отрываются от пола","Вдох вниз, выдох вверх"],"Колени не сводятся внутрь, спина не округляется."],
+ wallpush:["Отжимания от стены","Встань в шаге от стены, ладони на уровне груди. Согни руки, приблизь грудь к стене и вытолкни себя. Станет легко — переходи на стол.",["Тело прямое от пяток до макушки","Локти идут под 45° к корпусу","Вдох к стене, выдох от стены"],"Таз не провисает и не уходит назад."],
+ bridge:["Ягодичный мост","Ляг на спину, стопы под коленями. Подними таз, чтобы колени, таз и плечи вытянулись в линию.",["Толкайся пятками","Наверху сожми ягодицы на секунду","Опускайся медленно"],"Поднимают ягодицы, а не поясница: не прогибайся."],
+ calf:["Подъёмы на носки","Встань у стены и придерживайся рукой. Поднимись на носки как можно выше и медленно опустись.",["Вверх за секунду, вниз за три","Колени прямые, но не заперты","Вес на большом пальце"],"Не пружинь: внизу полная остановка."],
+ stretch:["Растяжка ног","Сядь, ноги вперёд. Тянись грудью к коленям, руками к стопам.",["Спина длинная, наклон от таза","Колени можно чуть согнуть","На выдохе чуть глубже"],"Без рывков и без боли, только лёгкое натяжение."],
+ plank:["Планка с колен","Обопрись на предплечья и колени. Вытянись в прямую линию от колен до макушки.",["Локти ровно под плечами","Живот подтянут, ягодицы сжаты","Смотри в пол, шея длинная"],"Таз не задирается и не провисает."],
+ birddog:["Птица-собака","Встань на четвереньки. Вытяни правую руку вперёд и левую ногу назад, задержись на секунду, смени стороны. Счёт на каждую сторону.",["Таз ровный, не разворачивается","Тянись пяткой назад, а не вверх","Медленно, с паузой"],"Не прогибай поясницу, когда поднимаешь ногу."],
+ deadbug:["Мёртвый жук","Ляг на спину, руки вверх, колени согнуты над тазом. Опусти правую руку за голову и выпрями левую ногу, вернись, смени стороны. Счёт на каждую сторону.",["Поясница всё время прижата к полу","Выдох на опускании","Двигайся медленно"],"Если поясница отрывается, уменьши амплитуду."],
+ superman:["Супермен","Ляг на живот, руки вперёд. Одновременно приподними руки, грудь и ноги, задержись на секунду.",["Смотри в пол, шею не запрокидывай","Тянись в длину, а не в высоту","Ягодицы сжаты"],"Без рывков: подъём небольшой и плавный."],
+ catcow:["Кошка-корова","На четвереньках: на выдохе округли спину вверх, на вдохе мягко прогнись.",["Движение идёт от таза к голове","Руки прямые, плечи над ладонями","Медленно, в ритме дыхания"],"Не проваливайся в поясницу в прогибе."],
+ shoulders:["Круги плечами","Стоя, руки вдоль тела. Рисуй плечами большие круги: вперёд, вверх, назад, вниз.",["Половину времени вперёд, половину назад","Шея расслаблена","Чем медленнее, тем лучше"],"Не зажимай плечи у ушей."],
+ sidebend:["Наклоны в стороны","Ноги на ширине плеч. Подними руку над головой и тянись в сторону. Счёт на каждую сторону.",["Наклон строго вбок, не вперёд","Таз остаётся на месте","Выдох в наклоне"],"Не скручивай корпус."],
+ lunge:["Выпады назад с опорой","Держись за спинку стула. Шагни одной ногой назад, опустись и вернись. Счёт на каждую ногу.",["Переднее колено над пяткой","Корпус вертикально","Толкайся передней ногой"],"Переднее колено не уходит внутрь и не выезжает за носок."],
+ sidestep:["Шаги в стороны с руками","Шаг в сторону, руки через стороны вверх. Приставь ногу, руки вниз. Потом в другую сторону.",["Без прыжков","Колени мягкие","Темп ровный, дыхание не сбивается"],"Задыхаешься — сбавь темп, но не останавливайся."],
+ balance:["Баланс на одной ноге","Встань рядом с опорой. Подними одну ногу и стой. На половине времени смени ногу.",["Смотри в одну точку перед собой","Опорное колено чуть согнуто","Живот подтянут"],"Не висни на опоре: касайся её, только если теряешь равновесие."],
+ breath:["Дыхание и растяжка","Потянись руками вверх. Вдох носом на четыре счёта, выдох ртом на шесть.",["На вдохе тянись выше","На выдохе опускай плечи","Пульс должен успокоиться"],"Не задерживай дыхание."]
+};
+const P=(fig,kind,base,inc,sets=1)=>({fig,n:EX[fig][0],how:EX[fig][1],cues:EX[fig][2],bad:EX[fig][3],kind,base,inc,sets});
 const PROGRAMS=[
- {n:"Каркас",about:"ноги и руки",steps:[
-  P("Марш на месте","Шагай, высоко поднимая колени, руки работают.","time",60,0),
-  P("Приседания к стулу","Сядь на край стула и встань. Колени смотрят туда же, куда носки.","reps",8,2,2),
-  P("Отжимания от стены","Ладони на стену на уровне груди, тело прямое. Станет легко — переходи на стол.","reps",8,2,2),
-  P("Ягодичный мост","Лёжа на спине, ноги согнуты. Подними таз, наверху задержись на секунду.","reps",10,2,2),
-  P("Подъёмы на носки","Держись за стену, поднимайся высоко и медленно опускайся.","reps",12,2),
-  P("Растяжка ног","Сидя, тянись к носкам без рывков. Дыши ровно.","time",45,0)]},
- {n:"Ось",about:"живот и спина",steps:[
-  P("Марш на месте","Шагай, высоко поднимая колени, руки работают.","time",60,0),
-  P("Планка с колен","Локти под плечами, от колен до макушки прямая линия. Живот подтянут.","time",15,5,2),
-  P("Птица-собака","На четвереньках вытяни правую руку и левую ногу, потом наоборот. Счёт на каждую сторону.","reps",6,1,2),
-  P("Мёртвый жук","Лёжа на спине, опускай разноимённые руку и ногу. Поясница прижата к полу. На каждую сторону.","reps",6,1,2),
-  P("Супермен","Лёжа на животе, подними руки и грудь, задержись на секунду.","reps",8,1,2),
-  P("Кошка-корова","На четвереньках плавно выгибай и прогибай спину.","time",45,0)]},
- {n:"Пластика",about:"подвижность и дыхание",steps:[
-  P("Круги плечами","Большие медленные круги вперёд и назад.","time",40,0),
-  P("Наклоны в стороны","Рука над головой, тянись вбок. На каждую сторону.","reps",10,0),
-  P("Выпады назад с опорой","Держись за стул, шагни назад и опустись, насколько удобно. На каждую ногу.","reps",5,1,2),
-  P("Шаги в стороны с руками","Шаг вбок, руки вверх, шаг обратно. Без прыжков, колени берегём.","time",30,10,2),
-  P("Баланс на одной ноге","Стой на одной ноге рядом с опорой. Половину времени на каждой.","time",30,10),
-  P("Дыхание и растяжка","Потянись вверх, вдох на четыре счёта, выдох на шесть.","time",60,0)]}
+ {n:"Каркас",about:"ноги и руки",steps:[P("march","time",60,0),P("squat","reps",8,2,2),P("wallpush","reps",8,2,2),P("bridge","reps",10,2,2),P("calf","reps",12,2),P("stretch","time",45,0)]},
+ {n:"Ось",about:"живот и спина",steps:[P("march","time",60,0),P("plank","time",15,5,2),P("birddog","reps",6,1,2),P("deadbug","reps",6,1,2),P("superman","reps",8,1,2),P("catcow","time",45,0)]},
+ {n:"Пластика",about:"подвижность и дыхание",steps:[P("shoulders","time",40,0),P("sidebend","reps",10,0),P("lunge","reps",5,1,2),P("sidestep","time",30,10,2),P("balance","time",30,10),P("breath","time",60,0)]}
 ];
+const HABITS=[["protein","Белок в каждом приёме пищи","яйца, творог, курица, рыба, бобовые"],["veg","Овощи минимум дважды","полтарелки в обед и в ужин"],["drinks","Без сладких напитков","сок и газировка считаются едой"],["late","Ужин за 2–3 часа до сна","позже только вода или чай"]];
+const HAND=[["Ладонь","белок: мясо, рыба, творог","1–2 на приём"],["Кулак","гарнир: крупа, картофель, макароны","1 на приём"],["Две горсти","овощи и зелень","на каждый приём"],["Большой палец","жиры: масло, орехи, сыр","1–2 на приём"]];
+const MEALS=[["Завтрак",["Омлет из трёх яиц с овощами и хлебом","Творог с ягодами и ложкой овсянки","Гречка с яйцом и огурцом"]],["Обед",["Суп, курица с гречкой и салат","Рыба с картофелем и квашеной капустой","Индейка с рисом и тушёными овощами"]],
+ ["Ужин",["Запечённая рыба с овощами","Курица с большим салатом","Омлет или творог с овощами"]],["Перекус",["Яблоко и горсть орехов","Стакан кефира","Творог или варёное яйцо"]]];
 
 /* ───────── состояние ───────── */
 const KEY="forma-save-v2",OLD="paparac-save-v1";
@@ -288,7 +342,7 @@ function render(){
   paintDay();const a=$("#app");$("#nav").hidden=!S.hero;
   document.querySelectorAll("nav button").forEach(b=>b.setAttribute("aria-current",b.dataset.tab===tab?"page":"false"));
   if(!S.hero){a.innerHTML="";return}
-  a.innerHTML=tab==="today"?vToday():tab==="walk"?vWalk():tab==="body"?vBody():vFan();
+  a.innerHTML=tab==="today"?vToday():tab==="walk"?vWalk():tab==="food"?vFood():tab==="body"?vBody():vFan();
   if(tab==="walk")drawRadar();
 }
 function greeting(){
@@ -326,10 +380,13 @@ function vToday(){
   <section class="sec pad"><p class="statement">${esc(greeting())}</p></section>
   <section class="sec pad task ${d.w?"done":""}"><div class="row between"><h2>Тренировка</h2><span class="mark">${d.w?"СДЕЛАНО":"+60"}</span></div>
     <p class="mute">«${prog.n}»: ${prog.about}. Около ${estMin(prog)} минут, дома, без снарядов.</p>
-    <button class="btn ${d.w?"line":""}" data-act="workout">${d.w?"Повторить":"Начать"}</button></section>
+    <button class="btn ${d.w?"line":""}" data-act="workout">${d.w?"Повторить":"Начать"}</button><button class="link" data-act="tech">Посмотреть упражнения и технику</button></section>
   <section class="sec pad task ${d.k?"done":""}"><div class="row between"><h2>Вылазка</h2><span class="mark">${d.k?"СДЕЛАНО":"+70"}</span></div>
     <p class="mute">Прогулка с дизайн-брифом. Бросаешь d20, получаешь задание для глаз и идёшь его искать.</p>
     <button class="btn ${d.k?"line":"day"}" data-tab="walk">${S.walk?"Вернуться на маршрут":d.k?"Ещё одна вылазка":"Бросить d20"}</button></section>
+  <section class="sec pad task"><div class="row between"><h2>Еда</h2><span class="mark">${S.hero.age?((d.food&&d.food.xp)?"+20 ВЗЯТО":foodCount(d)+" / 5"):"НОВОЕ"}</span></div>
+    <p class="mute">${S.hero.age?`Ориентир ${nutri().kcal} ккал и ${nutri().protein} г белка. Отмечай воду и привычки.`:"Ориентир по калориям, чек-лист дня и тарелка."}</p>
+    <button class="btn line" data-tab="food">${S.hero.age?"Отметить":"Настроить"}</button></section>
   <section class="sec pad"><div class="figs">
     <div class="fig"><b>${st}</b><span class="cap mute">${plural(st,"день","дня","дней")} подряд</span></div>
     <div class="fig"><b>${S.spare}</b><span class="cap mute">в запасе</span></div>
@@ -375,6 +432,59 @@ function vBody(){
     <p class="small mute">Сбрасывать быстрее килограмма в неделю не стоит. Если болят суставы, сердце или кружится голова, остановись и покажись врачу.</p>
     <button class="link" data-act="reset1">Начать заново</button><span id="reset-slot"></span>
     <p class="cap mute" id="sync">${syncText()}</p></section>`;
+}
+/* ───────── позы и еда ───────── */
+function figSvg(f){
+  const ln=(a,c)=>typeof a==="string"?`<path d="${a}" class="${c}"/>`:`<polyline points="${a.map(p=>p.join(",")).join(" ")}" class="${c}"/>`;
+  return `<svg viewBox="0 0 120 100" class="figure" aria-hidden="true"><line x1="0" x2="120" y1="94" y2="94" class="fl"/>${(f.p||[]).map(a=>ln(a,"pr")).join("")}${f.c?`<circle cx="${f.c[0]}" cy="${f.c[1]}" r="${f.c[2]}" class="hint"/>`:""}${f.b.map(a=>ln(a,"bd")).join("")}<circle cx="${f.h[0]}" cy="${f.h[1]}" r="7.5" class="hd"/></svg>`;
+}
+function poses(key){const a=FIGS[key];return `<div class="poses ${a.length>1?"two":"one"}">${a.map((f,i)=>`<div>${figSvg(f)}${a.length>1?`<span class="cap mute">${i?"Финиш":"Старт"}</span>`:""}</div>`).join("")}</div>`}
+function technique(s){return `<p>${esc(s.how)}</p><ul class="cues">${s.cues.map(c=>`<li>${esc(c)}</li>`).join("")}</ul><p class="small mute"><b>Частая ошибка.</b> ${esc(s.bad)}</p>`}
+function vTech(){
+  const prog=PROGRAMS[S.workouts%3],t=tier();
+  return `<div class="in"><div class="row between cap"><span>Техника · ${esc(prog.n)}</span><button class="link" style="padding:0" data-act="closeov">Закрыть</button></div>
+   ${prog.steps.map(x=>{const n=x.base+x.inc*t;return `<section class="stack"><div class="row between" style="align-items:baseline"><h2>${esc(x.n)}</h2><span class="mark mono">${x.sets>1?x.sets+" × ":""}${x.kind==="time"?n+" с":n}</span></div>${poses(x.fig)}${technique(x)}</section>`}).join("")}
+   <button class="btn day" data-act="workout">Начать тренировку</button></div>`;
+}
+function nutri(){
+  const h=S.hero,w=curW(),m=h.height/100,f=h.sex==="f",bmr=10*w+6.25*h.height-5*h.age+(f?-161:5),tdee=bmr*1.4,cut=w>h.goalW;
+  const kcal=Math.max(f?1200:1500,Math.round((tdee-(cut?500:0))/50)*50),ref=Math.min(w,25*m*m);
+  const protein=Math.round(1.8*ref/5)*5,fat=Math.round(kcal*.3/9/5)*5,carbs=Math.max(0,Math.round((kcal-protein*4-fat*9)/4/5)*5);
+  return{kcal,protein,fat,carbs,tdee:Math.round(tdee/50)*50,cut,glasses:Math.max(6,Math.min(10,Math.round(w*30/250)))};
+}
+const foodOf=d=>d.food||(d.food={h:{},water:0});
+function foodCount(d){if(!d||!d.food||!S.hero.age)return 0;const n=nutri();return HABITS.filter(x=>d.food.h[x[0]]).length+(d.food.water>=n.glasses?1:0)}
+let FS="m",foodEdit=false;
+function vFood(){
+  const h=S.hero;
+  if(!h.age||foodEdit)return head("Еда","Чтобы посчитать ориентир по калориям, нужны ещё две цифры.")+
+   `<section class="sec pad"><form id="fform" class="stack" style="gap:18px"><label><span class="cap mute">Возраст, лет</span><input type="number" id="f-age" inputmode="numeric" min="14" max="90" required value="${h.age||""}"></label>
+     <div class="stack" style="gap:6px"><span class="cap mute">Пол (от него зависит формула)</span><div class="modes" style="grid-template-columns:1fr 1fr"><button type="button" class="btn ${FS==="m"?"":"line"}" data-act="sex" data-v="m">Мужской</button><button type="button" class="btn ${FS==="f"?"":"line"}" data-act="sex" data-v="f">Женский</button></div></div>
+     <button class="btn day">Посчитать</button></form></section>`;
+  const n=nutri(),d=S.days[ymd()]||{},fd=d.food||{h:{},water:0},cnt=foodCount(d),sp=x=>String(x).replace(/\B(?=(\d{3})+(?!\d))/g," ");
+  return head("Еда","Вес уходит на кухне, тренировки помогают его не вернуть. Здесь ориентиры, а не диета.")+
+  `<section class="sec pad"><span class="cap mute">Ориентир на день</span><div class="kg">${sp(n.kcal)}<small> ккал</small></div>
+    <div class="figs"><div class="fig"><b>${n.protein}</b><span class="cap mute">г белка</span></div><div class="fig"><b>${n.fat}</b><span class="cap mute">г жиров</span></div><div class="fig"><b>${n.carbs}</b><span class="cap mute">г углеводов</span></div></div>
+    <p class="small mute">${n.cut?`Твой расход около ${sp(n.tdee)} ккал в день. Минус 500 даёт примерно полкило в неделю.`:`Цель по весу взята, это уровень поддержания.`} Считается от текущего веса по формуле Миффлина — Сан Жеора, точность плюс-минус 10%.</p></section>
+   <section class="sec pad"><div class="row between"><h2>Чек-лист дня</h2><span class="mark mono">${fd.xp?"+20 ВЗЯТО":cnt+" / 5"}</span></div>
+    <div><span class="cap mute">Вода, стаканов: ${fd.water} из ${n.glasses}</span><div class="glasses">${Array.from({length:n.glasses},(_,i)=>`<button data-act="water" data-n="${i+1}" aria-label="${i+1} стаканов" aria-pressed="${i<fd.water}"></button>`).join("")}</div></div>
+    <div>${HABITS.map(x=>`<button class="pt" data-act="habit" data-k="${x[0]}" aria-pressed="${!!fd.h[x[0]]}"><i></i><span class="grow"><b>${x[1]}</b><br><span class="small mute">${x[2]}</span></span></button>`).join("")}</div>
+    <p class="small mute">Четыре пункта из пяти дают +20 опыта. Идеальный день не обязателен.</p></section>
+   <section class="sec pad"><h2>Тарелка</h2><div class="row" style="gap:18px;align-items:center">
+     <svg viewBox="0 0 200 200" style="width:44%;max-width:180px;flex:none" role="img" aria-label="Половина тарелки овощи, четверть белок, четверть гарнир"><path d="M100 8A92 92 0 0 0 100 192Z" fill="var(--day)"/><path d="M100 100V8A92 92 0 0 1 192 100Z" fill="var(--ink)"/><path d="M100 100H192A92 92 0 0 1 100 192Z" fill="var(--tint)"/><circle cx="100" cy="100" r="92" fill="none" stroke="var(--ink)" stroke-width="3"/><path d="M100 8V192M100 100H192" stroke="var(--paper)" stroke-width="3"/></svg>
+     <div class="stack grow" style="gap:8px"><div class="row"><i class="key" style="background:var(--day)"></i><span><b>½ овощи</b><br><span class="small mute">любые, кроме картофеля</span></span></div>
+      <div class="row"><i class="key" style="background:var(--ink)"></i><span><b>¼ белок</b><br><span class="small mute">мясо, рыба, яйца, творог</span></span></div>
+      <div class="row"><i class="key" style="background:var(--tint);box-shadow:inset 0 0 0 1.5px var(--ink)"></i><span><b>¼ гарнир</b><br><span class="small mute">крупа, картофель, хлеб</span></span></div></div></div>
+    <p class="small mute">Так собирай обед и ужин. Калории можно не считать: тарелка сама держит их около ориентира.</p></section>
+   <section class="sec pad"><h2>Порция рукой</h2><div>${HAND.map(x=>`<div class="pt" style="cursor:default"><span class="grow"><b>${x[0]}</b><br><span class="small mute">${x[1]}</span></span><span class="cap">${x[2]}</span></div>`).join("")}</div></section>
+   <section class="sec pad"><h2>Что есть</h2>${MEALS.map(x=>`<div><span class="cap mute">${x[0]}</span><ul class="cues">${x[1].map(y=>`<li>${y}</li>`).join("")}</ul></div>`).join("")}</section>
+   <section class="sec pad"><p class="small mute">Это общие ориентиры, а не лечебная диета. При диабете, болезнях почек, желудка или расстройствах пищевого поведения план питания подбирает врач. Ниже ${h.sex==="f"?"1200":"1500"} ккал без врача не опускайся.</p>
+    <button class="link" data-act="foodedit">Изменить возраст и пол</button></section>`;
+}
+function foodTouched(){
+  const d=today(),fd=foodOf(d);
+  if(!fd.xp&&foodCount(d)>=4){fd.xp=true;S.xp+=20;toast("Питание в порядке: +20 опыта")}
+  save();render();
 }
 function vFan(){
   const got=Object.keys(S.swatches).length;
@@ -519,7 +629,7 @@ function closeBrief(note){
 /* ───────── тренировка ───────── */
 function startWorkout(){
   const prog=PROGRAMS[S.workouts%3],t=tier(),steps=[];
-  prog.steps.forEach(x=>{for(let i=1;i<=x.sets;i++)steps.push({n:x.n,how:x.how,kind:x.kind,amt:x.base+x.inc*t,set:x.sets>1?i+"/"+x.sets:""})});
+  prog.steps.forEach(x=>{for(let i=1;i<=x.sets;i++)steps.push(Object.assign({},x,{amt:x.base+x.inc*t,set:x.sets>1?i+"/"+x.sets:""}))});
   W={prog,steps,i:0,phase:"work",end:null,again:!!(S.days[ymd()]||{}).w};wake();showOv(vWorkout());
 }
 function vWorkout(){
@@ -527,11 +637,12 @@ function vWorkout(){
   const top=`<div class="stack" style="gap:10px"><div class="row between cap"><span>${esc(W.prog.n)} · ${W.i+1}/${W.steps.length}</span><button class="link" style="padding:0" data-act="quit">Прервать</button></div>
    <div class="segs">${W.steps.map((_,j)=>`<i class="${j<W.i?"on":j===W.i?"cur":""}"></i>`).join("")}</div></div>`;
   if(W.phase==="rest")return `<div class="in">${top}<div class="mid"><span class="cap mute">Отдых</span><div class="huge" id="wt">${mmss((W.end-Date.now())/1000)}</div>
-    <p class="mute">Дальше: ${esc(s.n)}${s.set?", подход "+s.set:""}</p></div><button class="btn line" data-act="skiprest">Я готов</button></div>`;
+    <div class="stack" style="gap:8px"><span class="cap mute">Дальше: ${esc(s.n)}${s.set?", подход "+s.set:""}</span>${poses(s.fig)}</div></div><button class="btn line" data-act="skiprest">Я готов</button></div>`;
   const run=W.end!=null;
-  return `<div class="in">${top}<div class="mid"><div><span class="cap mute">${s.set?"Подход "+s.set:"Один подход"}</span><h1>${esc(s.n)}</h1></div>
-    <div class="huge">${s.kind==="time"?`<span id="wt">${mmss(run?(W.end-Date.now())/1000:s.amt)}</span>`:s.amt+`<small>${plural(s.amt,"раз","раза","раз")}</small>`}</div>
-    <p class="mute">${esc(s.how)}</p></div>
+  return `<div class="in">${top}<div class="stack" style="flex:1;gap:14px"><div><span class="cap mute">${s.set?"Подход "+s.set:"Один подход"}</span><h1 style="font-size:26px">${esc(s.n)}</h1></div>
+    ${poses(s.fig)}
+    <div class="huge" style="font-size:min(21vw,96px)">${s.kind==="time"?`<span id="wt">${mmss(run?(W.end-Date.now())/1000:s.amt)}</span>`:s.amt+`<small style="display:inline;margin-left:.4em">${plural(s.amt,"раз","раза","раз")}</small>`}</div>
+    ${technique(s)}</div>
     ${s.kind==="time"?(run?`<button class="btn line" data-act="stepdone">Закончить раньше</button>`:`<button class="btn day" data-act="steptimer">Старт</button>`):`<button class="btn" data-act="stepdone">Готово</button>`}</div>`;
 }
 function stepDone(){W.end=null;W.i++;if(W.i>=W.steps.length){finishWorkout();return}W.phase="rest";W.end=Date.now()+30000;showOv(vWorkout())}
@@ -571,6 +682,11 @@ document.addEventListener("click",ev=>{
   const tb=ev.target.closest("[data-tab]");if(tb){tab=tb.dataset.tab;render();window.scrollTo(0,0);if(tab==="walk")watch();return}
   const b=ev.target.closest("[data-act]");if(!b)return;const a=b.dataset.act;
   if(a==="workout")startWorkout();
+  else if(a==="tech")showOv(vTech());
+  else if(a==="sex"){FS=b.dataset.v;const v=$("#f-age").value;render();$("#f-age").value=v}
+  else if(a==="foodedit"){foodEdit=true;FS=S.hero.sex||"m";render();window.scrollTo(0,0)}
+  else if(a==="habit"){const fd=foodOf(today());fd.h[b.dataset.k]=!fd.h[b.dataset.k];foodTouched()}
+  else if(a==="water"){const fd=foodOf(today()),n=+b.dataset.n;fd.water=fd.water===n?n-1:n;foodTouched()}
   else if(a==="steptimer"){W.end=Date.now()+W.steps[W.i].amt*1000;beep();showOv(vWorkout())}
   else if(a==="stepdone")stepDone();
   else if(a==="skiprest"){W.phase="work";W.end=null;showOv(vWorkout())}
@@ -599,6 +715,7 @@ document.addEventListener("submit",ev=>{
     const prev=curW(),k=ymd(),i=S.weights.findIndex(x=>x.d===k);if(i>=0)S.weights[i].kg=v;else S.weights.push({d:k,kg:v});
     greet=v<=S.hero.goalW?"Цель взята. Я знал, что ты дойдёшь. Теперь держим.":pick(v<prev?SAY.wdown:v>prev?SAY.wup:SAY.any);
     save();render();toast(v<prev?"Минус "+fmt(prev-v)+" кг. Записано.":"Записано")}
+  else if(id==="fform"){const a=num("#f-age");if(!(a>=14&&a<=90)){toast("Введи возраст");return}S.hero.age=a;S.hero.sex=FS;foodEdit=false;save();render()}
   else if(id==="gform"){const v=num("#g-in");if(!(v>=35&&v<S.hero.startW)){toast("Цель должна быть меньше стартового веса");return}
     S.hero.goalW=v;save();render();toast("Новая цель: "+fmt(v)+" кг")}
 });
