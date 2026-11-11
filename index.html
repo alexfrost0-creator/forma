@@ -66,7 +66,7 @@ svg.ruler,svg.chart{width:100%;height:auto;display:block;overflow:visible}
 .kg{font-family:var(--display);font-weight:800;font-size:54px;line-height:.9;letter-spacing:-.04em}
 .kg small{font-size:18px;font-weight:600;letter-spacing:0}
 
-input[type=number],input[type=text]{font:inherit;color:var(--ink);background:transparent;border:0;border-bottom:2px solid var(--ink);border-radius:0;padding:8px 0;min-height:46px;width:100%;font-size:20px;font-weight:600}
+input[type=number],input[type=text],input[type=password]{font:inherit;color:var(--ink);background:transparent;border:0;border-bottom:2px solid var(--ink);border-radius:0;padding:8px 0;min-height:46px;width:100%;font-size:20px;font-weight:600}
 input::placeholder{color:var(--mute);font-weight:400}
 label{display:flex;flex-direction:column;gap:2px}
 
@@ -139,6 +139,10 @@ nav button[aria-current=page]{background:var(--ink);color:var(--paper)}
 .glasses button{flex:1;aspect-ratio:1/1.5;max-width:40px;box-shadow:inset 0 0 0 2px var(--ink)}
 .glasses button[aria-pressed=true]{background:var(--day);box-shadow:inset 0 0 0 2px var(--ink)}
 .key{width:16px;height:16px;flex:none;align-self:flex-start;margin-top:4px}
+.meter{height:14px;background:var(--tint);box-shadow:inset 0 0 0 1.5px var(--ink)}
+.meter i{display:block;height:100%;background:var(--day);box-shadow:inset 0 0 0 1.5px var(--ink)}
+.shot{width:100%;max-height:34vh;object-fit:cover;display:block}
+label.btn{cursor:pointer}
 </style>
 
 <div id="app"></div>
@@ -385,7 +389,7 @@ function vToday(){
     <p class="mute">Прогулка с дизайн-брифом. Бросаешь d20, получаешь задание для глаз и идёшь его искать.</p>
     <button class="btn ${d.k?"line":"day"}" data-tab="walk">${S.walk?"Вернуться на маршрут":d.k?"Ещё одна вылазка":"Бросить d20"}</button></section>
   <section class="sec pad task"><div class="row between"><h2>Еда</h2><span class="mark">${S.hero.age?((d.food&&d.food.xp)?"+20 ВЗЯТО":foodCount(d)+" / 5"):"НОВОЕ"}</span></div>
-    <p class="mute">${S.hero.age?`Ориентир ${nutri().kcal} ккал и ${nutri().protein} г белка. Отмечай воду и привычки.`:"Ориентир по калориям, чек-лист дня и тарелка."}</p>
+    <p class="mute">${S.hero.age?(d.meals&&d.meals.length?`Съедено ${sp(eaten(d).k)} из ${sp(nutri().kcal)} ккал. `:`Ориентир ${sp(nutri().kcal)} ккал и ${nutri().protein} г белка. `)+"Снимай еду на фото и отмечай привычки.":"Ориентир по калориям, чек-лист дня и тарелка."}</p>
     <button class="btn line" data-tab="food">${S.hero.age?"Отметить":"Настроить"}</button></section>
   <section class="sec pad"><div class="figs">
     <div class="fig"><b>${st}</b><span class="cap mute">${plural(st,"день","дня","дней")} подряд</span></div>
@@ -461,11 +465,12 @@ function vFood(){
    `<section class="sec pad"><form id="fform" class="stack" style="gap:18px"><label><span class="cap mute">Возраст, лет</span><input type="number" id="f-age" inputmode="numeric" min="14" max="90" required value="${h.age||""}"></label>
      <div class="stack" style="gap:6px"><span class="cap mute">Пол (от него зависит формула)</span><div class="modes" style="grid-template-columns:1fr 1fr"><button type="button" class="btn ${FS==="m"?"":"line"}" data-act="sex" data-v="m">Мужской</button><button type="button" class="btn ${FS==="f"?"":"line"}" data-act="sex" data-v="f">Женский</button></div></div>
      <button class="btn day">Посчитать</button></form></section>`;
-  const n=nutri(),d=S.days[ymd()]||{},fd=d.food||{h:{},water:0},cnt=foodCount(d),sp=x=>String(x).replace(/\B(?=(\d{3})+(?!\d))/g," ");
+  const n=nutri(),d=S.days[ymd()]||{},fd=d.food||{h:{},water:0},cnt=foodCount(d);
   return head("Еда","Вес уходит на кухне, тренировки помогают его не вернуть. Здесь ориентиры, а не диета.")+
   `<section class="sec pad"><span class="cap mute">Ориентир на день</span><div class="kg">${sp(n.kcal)}<small> ккал</small></div>
     <div class="figs"><div class="fig"><b>${n.protein}</b><span class="cap mute">г белка</span></div><div class="fig"><b>${n.fat}</b><span class="cap mute">г жиров</span></div><div class="fig"><b>${n.carbs}</b><span class="cap mute">г углеводов</span></div></div>
     <p class="small mute">${n.cut?`Твой расход около ${sp(n.tdee)} ккал в день. Минус 500 даёт примерно полкило в неделю.`:`Цель по весу взята, это уровень поддержания.`} Считается от текущего веса по формуле Миффлина — Сан Жеора, точность плюс-минус 10%.</p></section>
+   ${vDiary(n,d)}
    <section class="sec pad"><div class="row between"><h2>Чек-лист дня</h2><span class="mark mono">${fd.xp?"+20 ВЗЯТО":cnt+" / 5"}</span></div>
     <div><span class="cap mute">Вода, стаканов: ${fd.water} из ${n.glasses}</span><div class="glasses">${Array.from({length:n.glasses},(_,i)=>`<button data-act="water" data-n="${i+1}" aria-label="${i+1} стаканов" aria-pressed="${i<fd.water}"></button>`).join("")}</div></div>
     <div>${HABITS.map(x=>`<button class="pt" data-act="habit" data-k="${x[0]}" aria-pressed="${!!fd.h[x[0]]}"><i></i><span class="grow"><b>${x[1]}</b><br><span class="small mute">${x[2]}</span></span></button>`).join("")}</div>
@@ -480,6 +485,99 @@ function vFood(){
    <section class="sec pad"><h2>Что есть</h2>${MEALS.map(x=>`<div><span class="cap mute">${x[0]}</span><ul class="cues">${x[1].map(y=>`<li>${y}</li>`).join("")}</ul></div>`).join("")}</section>
    <section class="sec pad"><p class="small mute">Это общие ориентиры, а не лечебная диета. При диабете, болезнях почек, желудка или расстройствах пищевого поведения план питания подбирает врач. Ниже ${h.sex==="f"?"1200":"1500"} ккал без врача не опускайся.</p>
     <button class="link" data-act="foodedit">Изменить возраст и пол</button></section>`;
+}
+/* ───────── дневник еды и подсчёт по фото ───────── */
+const KEYK="forma-anthropic-key";
+let SAMPLE=null,A=null;
+const apiKey=()=>{try{return localStorage.getItem(KEYK)||""}catch(e){return""}};
+const aiMode=()=>SAMPLE?"claude":apiKey()?"key":"none";
+const sp=x=>String(Math.round(x)).replace(/\B(?=(\d{3})+(?!\d))/g," ");
+function eaten(d){return((d&&d.meals)||[]).reduce((a,x)=>({k:a.k+x.k,p:a.p+(x.p||0),f:a.f+(x.f||0),c:a.c+(x.c||0)}),{k:0,p:0,f:0,c:0})}
+const FOOD_PROMPT=`Ты оцениваешь еду по фотографии для дневника питания. Определи блюда и продукты на фото, оцени массу каждой порции в граммах и её калорийность. Ориентируйся на размер посуды и приборов. Если на фото нет еды или напитков, верни is_food=false и нули. Названия пиши по-русски, коротко. В note одним предложением скажи, в чём главная неопределённость оценки (масло, соус, размер порции).
+Ответь только JSON-объектом такого вида, без пояснений:
+{"is_food":true,"name":"Гречка с курицей и салатом","items":[{"name":"гречка отварная","grams":180,"kcal":200}],"kcal":520,"protein":38,"fat":14,"carbs":58,"confidence":"medium","note":"Не видно, сколько масла в салате."}
+confidence: "low", "medium" или "high". Поля kcal, protein, fat, carbs считаются суммарно по всему фото.`;
+const FOOD_SCHEMA={type:"object",additionalProperties:false,required:["is_food","name","items","kcal","protein","fat","carbs","confidence","note"],properties:{
+  is_food:{type:"boolean"},name:{type:"string"},kcal:{type:"number"},protein:{type:"number"},fat:{type:"number"},carbs:{type:"number"},
+  confidence:{type:"string",enum:["low","medium","high"]},note:{type:"string"},
+  items:{type:"array",items:{type:"object",additionalProperties:false,required:["name","grams","kcal"],properties:{name:{type:"string"},grams:{type:"number"},kcal:{type:"number"}}}}}};
+async function initAI(){
+  try{if(!window.claude||!window.claude.use)return;const s=await window.claude.use("sample");if(!s)return;
+    const lim=await s.limits().catch(()=>null);if(lim&&lim.images){SAMPLE=s;if(tab==="food"&&$("#ov").hidden)render()}}catch(e){}
+}
+async function prepImage(file){
+  const url=URL.createObjectURL(file);
+  try{
+    const img=await new Promise((ok,no)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=()=>no({code:"image_rejected"});i.src=url});
+    const sc=Math.min(1,1280/Math.max(img.naturalWidth,img.naturalHeight)),cv=document.createElement("canvas");
+    cv.width=Math.max(1,Math.round(img.naturalWidth*sc));cv.height=Math.max(1,Math.round(img.naturalHeight*sc));cv.getContext("2d").drawImage(img,0,0,cv.width,cv.height);
+    const blob=await new Promise(ok=>cv.toBlob(ok,"image/jpeg",.85));if(!blob)throw{code:"image_rejected"};
+    return{blob,preview:cv.toDataURL("image/jpeg",.6)};
+  }finally{URL.revokeObjectURL(url)}
+}
+async function askClaude(blob){
+  if(SAMPLE)return await SAMPLE.json(FOOD_PROMPT,{images:[blob],cache:false});
+  const data=await new Promise((ok,no)=>{const r=new FileReader();r.onload=()=>ok(String(r.result).split(",")[1]);r.onerror=()=>no({code:"image_rejected"});r.readAsDataURL(blob)});
+  let res;
+  try{res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",
+    headers:{"content-type":"application/json","x-api-key":apiKey(),"anthropic-version":"2026-10-21","anthropic-beta":"server-side-fallback-2026-07-01","anthropic-dangerous-direct-browser-access":"true"},
+    body:JSON.stringify({model:"claude-opus-5-5",max_tokens:16000,fallbacks:"default",output_config:{effort:"low",format:{type:"json_schema",schema:FOOD_SCHEMA}},
+      messages:[{role:"user",content:[{type:"image",source:{type:"base64",media_type:"image/jpeg",data}},{type:"text",text:FOOD_PROMPT}]}]})})}
+  catch(e){throw{code:"network"}}
+  const j=await res.json().catch(()=>null);
+  if(!res.ok)throw{code:res.status===401||res.status===403?"bad_key":res.status===429?"rate_limited":res.status>=500?"upstream_error":"http",message:(j&&j.error&&j.error.message)||("HTTP "+res.status)};
+  if(!j||j.stop_reason==="refusal")throw{code:"refused"};
+  if(j.stop_reason==="max_tokens")throw{code:"invalid_json"};
+  const t=(j.content||[]).find(b=>b.type==="text");if(!t)throw{code:"invalid_json"};
+  try{return JSON.parse(t.text)}catch(e){throw{code:"invalid_json"}}
+}
+const AI_ERR={not_granted:"Ты не разрешил странице обращаться к Claude. Без этого по фото посчитать не выйдет, но можно вписать вручную.",sampling_disabled:"Claude для этой страницы недоступен. Впиши еду вручную.",
+  rate_limited:"Слишком много запросов или кончился лимит. Попробуй позже.",session_expired:"Нужно заново войти в Claude.",image_rejected:"Не получилось прочитать этот снимок. Попробуй другой.",
+  refused:"Claude отказался разбирать этот снимок. Попробуй другой кадр.",invalid_json:"Ответ пришёл в непонятном виде. Попробуй ещё раз.",bad_key:"Ключ API не подошёл. Проверь его внизу вкладки «Еда».",
+  network:"Нет связи с Anthropic. Проверь интернет и попробуй ещё раз.",upstream_error:"Сервис сейчас не отвечает. Попробуй ещё раз чуть позже."};
+async function analyze(file){
+  A={stage:"busy",mult:1};showOv(vMeal());
+  try{
+    const{blob,preview}=await prepImage(file);A.preview=preview;showOv(vMeal());
+    const r=await askClaude(blob),num=x=>Math.max(0,Math.round(+x||0));
+    if(!A||A.stage!=="busy")return;
+    A.r={food:r.is_food!==false&&num(r.kcal)>0,name:String(r.name||"Еда").slice(0,60),kcal:num(r.kcal),p:num(r.protein),f:num(r.fat),c:num(r.carbs),
+      conf:r.confidence,note:String(r.note||"").slice(0,200),items:(Array.isArray(r.items)?r.items:[]).slice(0,12).map(x=>({n:String(x.name||"").slice(0,50),g:num(x.grams),k:num(x.kcal)}))};
+    A.name=A.r.name;A.stage="result";showOv(vMeal());
+  }catch(e){if(!A)return;A.stage="error";A.err=AI_ERR[e&&e.code]||("Не получилось посчитать."+(e&&e.message?" Ответ сервиса: "+e.message:""));showOv(vMeal())}
+}
+function vMeal(){
+  const top=`<div class="row between cap"><span>Еда по фото</span><button class="link" style="padding:0" data-act="mealclose">Закрыть</button></div>`,shot=A.preview?`<img class="shot" src="${A.preview}" alt="Твой снимок">`:"";
+  if(A.stage==="busy")return `<div class="in">${top}${shot}<div class="mid"><h1>Смотрю на тарелку</h1><p class="mute">Обычно это занимает от пяти секунд до минуты.</p></div></div>`;
+  if(A.stage==="error")return `<div class="in">${top}${shot}<div class="mid"><h1>Не вышло</h1><p>${esc(A.err)}</p></div><button class="btn" data-act="manual-meal">Вписать вручную</button></div>`;
+  const r=A.r,m=A.mult;
+  if(!r.food)return `<div class="in">${top}${shot}<div class="mid"><h1>Еды не видно</h1><p class="mute">На этом снимке я не нашёл еду или напитки. Сними тарелку сверху, при свете, целиком.</p></div><button class="btn" data-act="mealclose">Понятно</button></div>`;
+  return `<div class="in">${top}${shot}
+   <label><span class="cap mute">Название</span><input type="text" id="m-name" maxlength="60" value="${esc(A.name)}"></label>
+   <div class="row between" style="align-items:flex-end"><div class="kg">${sp(r.kcal*m)}<small> ккал</small></div><span class="cap" style="text-align:right">Б ${Math.round(r.p*m)} · Ж ${Math.round(r.f*m)} · У ${Math.round(r.c*m)}</span></div>
+   <div><span class="cap mute">Порция</span><div class="modes" style="grid-template-columns:repeat(4,1fr);margin-top:6px">${[.5,1,1.5,2].map(v=>`<button class="btn sm ${v===m?"":"line"}" data-act="mult" data-v="${v}">×${String(v).replace(".",",")}</button>`).join("")}</div></div>
+   ${r.items.length?`<div>${r.items.map(x=>`<div class="pt" style="cursor:default"><span class="grow">${esc(x.n)}<br><span class="small mute">около ${Math.round(x.g*m)} г</span></span><span class="mono">${sp(x.k*m)}</span></div>`).join("")}</div>`:""}
+   <p class="small mute">${r.conf==="high"?"Оценка уверенная.":r.conf==="low"?"Оценка грубая.":"Оценка средней точности."} ${esc(r.note)} По фото ошибка в 20–30% обычное дело: масло и соусы на снимке не видны.</p>
+   <button class="btn day" data-act="mealadd">Добавить в дневник</button></div>`;
+}
+function vManualMeal(){return `<div class="in"><div class="row between cap"><span>Еда вручную</span><button class="link" style="padding:0" data-act="mealclose">Закрыть</button></div>
+  <form id="mform" class="stack" style="gap:18px"><label><span class="cap mute">Что съел</span><input type="text" id="mm-name" maxlength="60" required autocomplete="off"></label>
+   <div class="row" style="gap:18px"><label class="grow"><span class="cap mute">Ккал</span><input type="number" id="mm-k" inputmode="numeric" min="1" max="5000" required></label>
+    <label class="grow"><span class="cap mute">Белок, г (можно пусто)</span><input type="number" id="mm-p" inputmode="numeric" min="0" max="400"></label></div>
+   <button class="btn day">Добавить</button></form></div>`}
+function addMeal(m){const d=today();(d.meals||(d.meals=[])).push(m);if(d.meals.length>30)d.meals.shift();A=null;save();closeOv();toast("Записано: "+sp(m.k)+" ккал")}
+function vDiary(n,d){
+  const e=eaten(d),m=d.meals||[],left=n.kcal-e.k,mode=aiMode();
+  return `<section class="sec pad"><div class="row between"><h2>Дневник</h2><span class="mark mono">${sp(e.k)} / ${sp(n.kcal)}</span></div>
+   <div class="meter"><i style="width:${Math.min(100,e.k/n.kcal*100)}%"></i></div>
+   <p class="small mute">${m.length?(left>=0?`Осталось ${sp(left)} ккал.`:`Перебор на ${sp(-left)} ккал. Не страшно: завтра просто вернись к ориентиру.`)+` Белка ${Math.round(e.p)} из ${n.protein} г.`:"Сфотографируй тарелку, и Claude прикинет калории, белки, жиры и углеводы."}</p>
+   ${mode==="none"?`<div class="brief"><p><b>Для подсчёта по фото нужен ключ Anthropic API.</b></p>
+     <p class="small mute">У сайта нет своего сервера, поэтому фото распознаётся по твоему ключу. Он хранится только в этом браузере и уходит только в Anthropic. Одно фото стоит несколько центов. В версии внутри Claude ключ не нужен.</p>
+     <form id="kform" class="row" style="align-items:flex-end"><label class="grow"><span class="cap mute">Ключ (sk-ant-…)</span><input type="password" id="k-in" autocomplete="off"></label><button class="btn auto">Сохранить</button></form></div>`
+    :`<div class="modes" style="grid-template-columns:1fr 1fr"><label class="btn day">Снять еду<input type="file" accept="image/*" capture="environment" class="pick" id="pick-cam" hidden></label><label class="btn line">Из галереи<input type="file" accept="image/*" class="pick" id="pick-lib" hidden></label></div>`}
+   <button class="link" data-act="manual-meal">Вписать вручную</button>
+   ${m.length?`<div>${m.map((x,i)=>`<div class="pt" style="cursor:default"><span class="grow"><b>${esc(x.n)}</b><br><span class="small mute">${x.f||x.c?`Б ${Math.round(x.p||0)} · Ж ${Math.round(x.f||0)} · У ${Math.round(x.c||0)}`:x.p?`Б ${Math.round(x.p)}`:"вручную"}</span></span><span class="d">${sp(x.k)}</span><button class="link" style="font-size:20px;text-decoration:none;padding:4px 0 4px 8px" data-act="mealdel" data-i="${i}" aria-label="Удалить ${esc(x.n)}">×</button></div>`).join("")}</div>`:""}
+   <p class="small mute">Снимок отправляется в Anthropic только для распознавания и в приложении не хранится.${mode==="key"?` <button class="link" style="padding:0" data-act="keydel">Удалить ключ API из этого браузера</button>`:""}</p></section>`;
 }
 function foodTouched(){
   const d=today(),fd=foodOf(d);
@@ -683,6 +781,12 @@ document.addEventListener("click",ev=>{
   const b=ev.target.closest("[data-act]");if(!b)return;const a=b.dataset.act;
   if(a==="workout")startWorkout();
   else if(a==="tech")showOv(vTech());
+  else if(a==="manual-meal"){A=null;showOv(vManualMeal())}
+  else if(a==="mealclose"){A=null;closeOv()}
+  else if(a==="mult"){const el=$("#m-name");if(el)A.name=el.value;A.mult=+b.dataset.v;showOv(vMeal())}
+  else if(a==="mealadd"){const r=A.r,m=A.mult,nm=($("#m-name").value.trim()||r.name).slice(0,60);addMeal({t:Date.now(),n:nm,k:Math.round(r.kcal*m),p:Math.round(r.p*m),f:Math.round(r.f*m),c:Math.round(r.c*m),src:"photo"})}
+  else if(a==="mealdel"){const d=today();(d.meals||[]).splice(+b.dataset.i,1);save();render()}
+  else if(a==="keydel"){try{localStorage.removeItem(KEYK)}catch(e){}render();toast("Ключ удалён")}
   else if(a==="sex"){FS=b.dataset.v;const v=$("#f-age").value;render();$("#f-age").value=v}
   else if(a==="foodedit"){foodEdit=true;FS=S.hero.sex||"m";render();window.scrollTo(0,0)}
   else if(a==="habit"){const fd=foodOf(today());fd.h[b.dataset.k]=!fd.h[b.dataset.k];foodTouched()}
@@ -704,6 +808,7 @@ document.addEventListener("click",ev=>{
   else if(a==="reset0"){$("#reset-slot").innerHTML=""}
   else if(a==="reset2"){unwatch();S=blank();save();try{localStorage.removeItem(OLD)}catch(e){}tab="today";greet=null;boot()}
 });
+document.addEventListener("change",ev=>{const t=ev.target;if(t.classList&&t.classList.contains("pick")&&t.files&&t.files[0]){const f=t.files[0];t.value="";analyze(f)}});
 document.addEventListener("input",ev=>{if(ev.target.id==="ob-h")obHint()});
 document.addEventListener("submit",ev=>{
   ev.preventDefault();const id=ev.target.id,num=s=>+String($(s).value).replace(",",".");
@@ -715,6 +820,8 @@ document.addEventListener("submit",ev=>{
     const prev=curW(),k=ymd(),i=S.weights.findIndex(x=>x.d===k);if(i>=0)S.weights[i].kg=v;else S.weights.push({d:k,kg:v});
     greet=v<=S.hero.goalW?"Цель взята. Я знал, что ты дойдёшь. Теперь держим.":pick(v<prev?SAY.wdown:v>prev?SAY.wup:SAY.any);
     save();render();toast(v<prev?"Минус "+fmt(prev-v)+" кг. Записано.":"Записано")}
+  else if(id==="mform"){const k=num("#mm-k"),nm=$("#mm-name").value.trim();if(!nm||!(k>0&&k<=5000)){toast("Нужны название и калории");return}addMeal({t:Date.now(),n:nm.slice(0,60),k:Math.round(k),p:Math.max(0,Math.round(num("#mm-p")||0)),src:"manual"})}
+  else if(id==="kform"){const v=$("#k-in").value.trim();if(v.length<20){toast("Это не похоже на ключ");return}try{localStorage.setItem(KEYK,v)}catch(e){toast("Браузер не дал сохранить ключ");return}render();toast("Ключ сохранён в этом браузере")}
   else if(id==="fform"){const a=num("#f-age");if(!(a>=14&&a<=90)){toast("Введи возраст");return}S.hero.age=a;S.hero.sex=FS;foodEdit=false;save();render()}
   else if(id==="gform"){const v=num("#g-in");if(!(v>=35&&v<S.hero.startW)){toast("Цель должна быть меньше стартового веса");return}
     S.hero.goalW=v;save();render();toast("Новая цель: "+fmt(v)+" кг")}
@@ -725,7 +832,7 @@ setInterval(()=>{
   const w=S.walk;if(w&&w.mode==="timer"&&tab==="walk"&&!W&&$("#ov").hidden){const left=w.dur*60-(Date.now()-w.start)/1000,el=$("#wtimer");
     if(left<=0&&!w.rang){w.rang=true;saveLocal();beep();render()}else if(el&&left>0)el.textContent=mmss(left)}
 },400);
-document.addEventListener("visibilitychange",()=>{if(!document.hidden&&S.hero&&$("#ov").hidden&&document.activeElement.tagName!=="INPUT"){if(S.walk)wake();render()}});
+document.addEventListener("visibilitychange",()=>{if(!document.hidden&&S.hero&&$("#ov").hidden&&document.activeElement.tagName!=="INPUT"&&tab!=="food"){if(S.walk)wake();render()}});
 
 /* ───────── запуск ───────── */
 function boot(){
@@ -736,7 +843,7 @@ function boot(){
   if(S.walk&&S.walk.mode==="gps"){if(Date.now()-S.walk.start>6*36e5){bank();S.walk=null;save()}else watch()}
   render();
 }
-loadLocal();boot();initCloud();
+loadLocal();boot();initCloud();initAI();
 </script>
 
 </body></html>
